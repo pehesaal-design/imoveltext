@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin — ImóvelText IA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1D9E75;--green-dark:#0F6E56;--green-light:#E1F5EE;
+  --text:#1a1a1a;--text-muted:#666;--text-hint:#aaa;
+  --border:#e5e5e5;--bg:#f7f7f5;--surface:#fff;
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:360px;width:100%}
+.login-card h1{font-size:20px;font-weight:600;margin-bottom:6px}
+.login-card p{font-size:13px;color:var(--text-muted);margin-bottom:1.5rem}
+.login-card label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);margin-bottom:4px}
+.login-card input{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);margin-bottom:12px;outline:none;background:var(--bg)}
+.login-card input:focus{border-color:var(--green);background:#fff}
+.login-btn{width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
+.login-btn:hover{background:var(--green-dark)}
+.login-error{font-size:13px;color:#dc2626;margin-top:8px;display:none}
+
+/* ADMIN */
+#admin-screen{display:none}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-size:16px;font-weight:600}
+.topbar-badge{font-size:11px;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-weight:600}
+.logout-btn{font-size:13px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px}
+.logout-btn:hover{background:var(--bg)}
+
+.content{max-width:900px;margin:0 auto;padding:2rem 1rem}
+.section-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-hint);margin-bottom:1rem}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:2rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.stat-label{font-size:12px;color:var(--text-muted);margin-bottom:6px}
+.stat-value{font-size:28px;font-weight:600;color:var(--text)}
+.stat-sub{font-size:12px;color:var(--text-hint);margin-top:2px}
+
+/* CONFIG CARD */
+.config-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem}
+.config-card h2{font-size:15px;font-weight:600;margin-bottom:4px}
+.config-card p{font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.5}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);margin-bottom:5px}
+.field input,.field select{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.15s}
+.field input:focus,.field select:focus{border-color:var(--green);background:#fff}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aaa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.field .hint{font-size:12px;color:var(--text-hint);margin-top:4px}
+.save-btn{padding:10px 24px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background 0.15s}
+.save-btn:hover{background:var(--green-dark)}
+.save-msg{font-size:13px;color:var(--green);margin-left:12px;opacity:0;transition:opacity 0.3s}
+
+/* USERS TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:2rem}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);padding:10px 16px;background:var(--bg);text-align:left;border-bottom:1px solid var(--border)}
+td{font-size:13px;padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge.free{background:var(--green-light);color:var(--green-dark)}
+.badge.paid{background:#dbeafe;color:#1d4ed8}
+.badge.empty{background:#fee2e2;color:#dc2626}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>Painel Administrativo</h1>
+    <p>Acesso restrito — somente o dono do sistema.</p>
+    <label>Senha de acesso</label>
+    <input type="password" id="admin-pass" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')checkLogin()"/>
+    <button class="login-btn" onclick="checkLogin()">Entrar</button>
+    <div class="login-error" id="login-error">Senha incorreta.</div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-screen">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="topbar-title">ImóvelText — Admin</span>
+      <span class="topbar-badge">PRIVADO</span>
+    </div>
+    <button class="logout-btn" onclick="adminLogout()">Sair</button>
+  </div>
+
+  <div class="content">
+
+    <!-- STATS -->
+    <div class="section-title" style="margin-bottom:1rem">Visão geral do mês</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Cadastros totais</div>
+        <div class="stat-value" id="stat-users">--</div>
+        <div class="stat-sub">usuários registrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gerações no mês</div>
+        <div class="stat-value" id="stat-gens">--</div>
+        <div class="stat-sub">anúncios gerados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Custo estimado</div>
+        <div class="stat-value" id="stat-cost">--</div>
+        <div class="stat-sub">em dólares (API)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Créditos esgotados</div>
+        <div class="stat-value" id="stat-empty">--</div>
+        <div class="stat-sub">potenciais assinantes</div>
+      </div>
+    </div>
+
+    <!-- API CONFIG -->
+    <div class="section-title">Configuração de IA</div>
+    <div class="config-card">
+      <h2>API e Modelo de IA</h2>
+      <p>Troque a API e a chave quando quiser. A mudança é instantânea para todos os corretores.</p>
+
+      <div class="field">
+        <label>Provedor de IA</label>
+        <select id="cfg-provider" onchange="updateModelOptions()">
+          <option value="openai">OpenAI (GPT)</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="google">Google (Gemini)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Modelo</label>
+        <select id="cfg-model">
+          <option value="gpt-4o-mini">GPT-4o Mini — econômico e rápido ✓ Recomendado</option>
+          <option value="gpt-4o">GPT-4o — mais inteligente</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Chave de API</label>
+        <input type="password" id="cfg-apikey" placeholder="Cole sua chave aqui (sk-...)"/>
+        <div class="hint">A chave fica salva de forma segura no banco de dados. Os corretores nunca a veem.</div>
+      </div>
+      <div style="display:flex;align-items:center">
+        <button class="save-btn" onclick="saveConfig()">Salvar configuração</button>
+        <span class="save-msg" id="save-msg">✓ Salvo com sucesso!</span>
+      </div>
+    </div>
+
+    <!-- CREDITS CONFIG -->
+    <div class="config-card">
+      <h2>Créditos gratuitos</h2>
+      <p>Define quantos anúncios gratuitos cada novo corretor recebe ao se cadastrar.</p>
+      <div class="field">
+        <label>Quantidade de créditos grátis</label>
+        <select id="cfg-credits">
+          <option value="1">1 anúncio grátis</option>
+          <option value="2">2 anúncios grátis</option>
+          <option value="3" selected>3 anúncios grátis ✓ Atual</option>
+          <option value="5">5 anúncios grátis</option>
+        </select>
+      </div>
+      <button class="save-btn" onclick="saveCredits()">Salvar</button>
+    </div>
+
+    <!-- STRIPE CONFIG -->
+    <div class="config-card">
+      <h2>Link de pagamento (Stripe)</h2>
+      <p>Cole aqui o link do Stripe. Quando o corretor clicar em "Assinar", será redirecionado para este link.</p>
+      <div class="field">
+        <label>Link do Stripe</label>
+        <input type="text" id="cfg-stripe" placeholder="https://buy.stripe.com/..."/>
+      </div>
+      <button class="save-btn" onclick="saveStripe()">Salvar</button>
+    </div>
+
+    <!-- USERS TABLE -->
+    <div class="section-title">Últimos cadastros</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>E-mail</th><th>Cadastro</th><th>Créditos</th><th>Status</th></tr>
+        </thead>
+        <tbody id="users-table">
+          <tr><td colspan="4" style="text-align:center;color:var(--text-hint);padding:1.5rem">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ADMIN_PASSWORD = 'DEFINA_SUA_SENHA_ADMIN_AQUI';
+const SUPABASE_URL   = 'COLE_SUA_URL_SUPABASE_AQUI';
+const SUPABASE_KEY   = 'COLE_SUA_CHAVE_SUPABASE_AQUI';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function checkLogin() {
+  const pass = document.getElementById('admin-pass').value;
+  if (pass === ADMIN_PASSWORD) {
+    sessionStorage.setItem('admin_ok', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-screen').style.display = 'block';
+    loadDashboard();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function adminLogout() {
+  sessionStorage.removeItem('admin_ok');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-screen').style.display = 'none';
+  document.getElementById('admin-pass').value = '';
+}
+
+if (sessionStorage.getItem('admin_ok')) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('admin-screen').style.display = 'block';
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  const { data: users } = await sb.from('users').select('*').order('created_at', { ascending: false });
+  const { data: gens } = await sb.from('generations').select('*');
+
+  const now = new Date();
+  const thisMonth = gens?.filter(g => new Date(g.created_at).getMonth() === now.getMonth()) || [];
+  const emptyCredits = users?.filter(u => u.credits <= 0).length || 0;
+
+  document.getElementById('stat-users').textContent = users?.length || 0;
+  document.getElementById('stat-gens').textContent = thisMonth.length;
+  document.getElementById('stat-cost').textContent = '$' + (thisMonth.length * 0.003).toFixed(2);
+  document.getElementById('stat-empty').textContent = emptyCredits;
+
+  // Load config
+  const { data: cfg } = await sb.from('config').select('*').eq('id', 1).single();
+  if (cfg) {
+    document.getElementById('cfg-provider').value = cfg.provider || 'openai';
+    document.getElementById('cfg-model').value = cfg.model || 'gpt-4o-mini';
+    document.getElementById('cfg-apikey').value = cfg.api_key || '';
+    document.getElementById('cfg-stripe').value = cfg.stripe_link || '';
+    document.getElementById('cfg-credits').value = cfg.free_credits || 3;
+    updateModelOptions();
+  }
+
+  // Users table
+  const tbody = document.getElementById('users-table');
+  if (!users || users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-hint);padding:1.5rem">Nenhum cadastro ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.slice(0,20).map(u => {
+    const date = new Date(u.created_at).toLocaleDateString('pt-BR');
+    const status = u.credits > 0
+      ? `<span class="badge free">${u.credits} crédito${u.credits>1?'s':''}</span>`
+      : `<span class="badge empty">Esgotado</span>`;
+    return `<tr><td>${u.email}</td><td>${date}</td><td>${u.credits}</td><td>${status}</td></tr>`;
+  }).join('');
+}
+
+function updateModelOptions() {
+  const provider = document.getElementById('cfg-provider').value;
+  const modelSel = document.getElementById('cfg-model');
+  const options = {
+    openai: [
+      { v:'gpt-4o-mini', l:'GPT-4o Mini — econômico e rápido ✓ Recomendado' },
+      { v:'gpt-4o', l:'GPT-4o — mais inteligente' }
+    ],
+    anthropic: [
+      { v:'claude-haiku-4-5-20251001', l:'Claude Haiku — econômico ✓ Recomendado' },
+      { v:'claude-sonnet-4-6', l:'Claude Sonnet — mais inteligente' }
+    ],
+    google: [
+      { v:'gemini-1.5-flash', l:'Gemini Flash — rápido e barato ✓ Recomendado' },
+      { v:'gemini-1.5-pro', l:'Gemini Pro — mais inteligente' }
+    ]
+  };
+  modelSel.innerHTML = options[provider].map(o=>`<option value="${o.v}">${o.l}</option>`).join('');
+}
+
+async function saveConfig() {
+  const cfg = {
+    id: 1,
+    provider: document.getElementById('cfg-provider').value,
+    model: document.getElementById('cfg-model').value,
+    api_key: document.getElementById('cfg-apikey').value,
+  };
+  await sb.from('config').upsert(cfg);
+  showSaved();
+}
+
+async function saveCredits() {
+  await sb.from('config').upsert({ id: 1, free_credits: parseInt(document.getElementById('cfg-credits').value) });
+  showSaved();
+}
+
+async function saveStripe() {
+  await sb.from('config').upsert({ id: 1, stripe_link: document.getElementById('cfg-stripe').value });
+  showSaved();
+}
+
+function showSaved() {
+  const msg = document.getElementById('save-msg');
+  msg.style.opacity = '1';
+  setTimeout(() => { msg.style.opacity = '0'; }, 2500);
+}
+</script>
+</body>
+</html>
